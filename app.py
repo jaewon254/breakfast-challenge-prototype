@@ -110,4 +110,93 @@ with st.form(f"daily_checkin_{total_day_index}"):
     
     meal_type = st.selectbox(
         "어떤 형태로 드셨나요?", 
-        ("선택 안 함 (굶음)", f"추천 메뉴
+        ("선택 안 함 (굶음)", f"추천 메뉴: {todays_pick['menu']}", "편의점 간편식", "전자레인지 간편 조리", "어제 남은 음식", "배달 음식", "기타 (직접 요리 등)")
+    )
+    
+    submit_btn = st.form_submit_button("오늘 하루 인증하기")
+    
+    if submit_btn:
+        if "네" in ate_breakfast:
+            if total_day_index not in st.session_state.checkins:
+                st.session_state.checkins.append(total_day_index)
+            st.success(f"최고예요! '{meal_type}'(으)로 든든하게 하루를 시작했군요. 오아완 성공! 🎉")
+        else:
+            st.error(f"앗, 아쉽네요. 내일은 꼭 '{todays_pick['menu']}'에 도전해 보세요! 💪")
+        
+        if total_day_index < 27:
+            next_menu = RECOMMENDATIONS[total_day_index + 1]['menu']
+            st.info(f"💡 **미리 보는 내일 메뉴:** 내일은 **[{next_menu}]** 입니다. 미리 식재료를 생각만 해두어도 훨씬 수월해질 거예요!")
+
+st.divider()
+
+# --- 나의 4주 완주 달성률 시각화 ---
+st.subheader("📊 나의 4주 연속 달성률")
+progress_count = len(st.session_state.checkins)
+progress_rate = progress_count / 28.0
+
+st.progress(progress_rate)
+st.markdown(f"총 28일 중 **{progress_count}일** 인증 완료! (진행률: **{int(progress_rate * 100)}%**)")
+
+# --- 7일 차 전용: 주간 회고 설문 ---
+if "7일 차" in day:
+    st.divider()
+    st.subheader(f"🏆 {week[:4]} 마무리 회고")
+    st.markdown("이번 주 동안의 식사 습관을 되돌아보세요. **나의 행동을 스스로 평가하는 것은 계획된 행동을 지속하는 데 매우 중요**합니다.")
+    
+    # 🚨 오류 해결 부분: 설문 폼에도 주차(week_index)별로 고유한 이름을 부여함
+    with st.form(f"weekly_survey_{week_index}"):
+        attitude = st.slider("이번 주 아침을 먹고 난 후의 기분이나 컨디션은 어땠나요? (1점: 나쁨 ~ 5점: 매우 좋음)", 1, 5, 3)
+        control = st.selectbox(
+            "아침을 챙겨 먹는 데 가장 나의 통제를 벗어난(방해가 된) 요인은?", 
+            ("없음 (스스로 잘 통제함)", "아침잠/시간 부족", "식재료 및 식비 부담", "조리하기 귀찮음", "입맛이 없음", "기타")
+        )
+        benefit = st.text_area("다음 주에도 아침을 먹기 위해 나 스스로에게 해주고 싶은 다짐은?")
+        
+        survey_btn = st.form_submit_button("회고 제출하고 이번 주 마무리하기")
+        
+        if survey_btn:
+            new_survey_data = {
+                "제출일자": str(datetime.date.today()),
+                "진행주차": week[:4],
+                "컨디션_점수(1~5)": attitude,
+                "방해요인": control,
+                "나의_다짐": benefit
+            }
+            st.session_state.survey_results.append(new_survey_data)
+            
+            st.success("소중한 회고가 등록되었습니다. 데이터가 안전하게 저장되었습니다! 👏👏👏")
+            st.balloons()
+
+# -----------------------------------------------------------------------------
+# [추가됨] 관리자(본인) 전용: 설문 데이터 통계 확인, 엑셀 다운로드 및 초기화
+# -----------------------------------------------------------------------------
+st.divider()
+with st.expander("📁 관리자 전용: 설문 통계 데이터 모아보기 및 엑셀 다운로드"):
+    if len(st.session_state.survey_results) > 0:
+        # 세션에 저장된 설문 데이터를 판다스 데이터프레임(표 형식)으로 변환
+        df = pd.DataFrame(st.session_state.survey_results)
+        
+        # 화면에 표(테이블) 형태로 미리 보여주기
+        st.dataframe(df)
+        
+        # 한글 깨짐 방지를 위해 인코딩을 'utf-8-sig'로 설정하여 CSV로 변환
+        csv = df.to_csv(index=False).encode('utf-8-sig')
+        
+        # 버튼을 나란히 배치하기 위해 컬럼 나누기
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.download_button(
+                label="📊 설문 결과 엑셀(CSV) 파일로 다운로드",
+                data=csv,
+                file_name=f"breakfast_survey_results_{datetime.date.today()}.csv",
+                mime="text/csv"
+            )
+            
+        with col2:
+            # 초기화 버튼 생성
+            if st.button("🚨 설문 데이터 싹 지우기 (초기화)"):
+                st.session_state.survey_results = [] # 저장된 데이터를 빈칸으로 만듦
+                st.rerun() # 화면을 새로고침해서 표를 즉시 사라지게 함
+    else:
+        st.info("아직 제출된 설문 데이터가 없습니다. 7일 차 설문을 진행해 보세요!")
