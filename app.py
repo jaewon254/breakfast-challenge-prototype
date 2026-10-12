@@ -1,17 +1,31 @@
 import streamlit as st
 import datetime
 import pandas as pd
+import json
+import gspread
+from google.oauth2.service_account import Credentials
+
+# =====================================================================
+# 🚨 이곳에 아까 만든 '구글 스프레드시트'의 인터넷 주소를 복사해서 넣어주세요!
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1opWmQ2UfHILLSFEBDY778hi35A5Lly10hvaw9wlpPto/edit?gid=0#gid=0"
+# =====================================================================
 
 # -----------------------------------------------------------------------------
-# 0. 세션 상태(Session State) 초기화 (데이터 저장용)
+# 0. 데이터베이스(구글 시트) 연결 설정
 # -----------------------------------------------------------------------------
-# 체크인 기록 저장용
+@st.cache_resource
+def init_connection():
+    secret_dict = json.loads(st.secrets["google_secret"])
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = Credentials.from_service_account_info(secret_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    return client
+
 if "checkins" not in st.session_state:
     st.session_state.checkins = []
-
-# 설문조사 결과 저장용 리스트
-if "survey_results" not in st.session_state:
-    st.session_state.survey_results = []
 
 # -----------------------------------------------------------------------------
 # 1. 28일(4주) 전체 추천 메뉴 리스트
@@ -70,7 +84,6 @@ week = st.sidebar.radio("현재 진행 중인 주차:", weeks)
 days = ["1일 차", "2일 차", "3일 차", "4일 차", "5일 차", "6일 차", "7일 차"]
 day = st.sidebar.radio(f"{week[:4]} 진행 일차:", days)
 
-# --- 선택된 날짜에 따른 절대 인덱스 계산 (0 ~ 27) ---
 week_index = weeks.index(week)
 day_index = days.index(day)
 total_day_index = (week_index * 7) + day_index
@@ -88,22 +101,21 @@ st.divider()
 # --- 주차별 교육 콘텐츠 ---
 st.subheader(f"📢 이번 주 심리 미션: {week}")
 if week_index == 0:
-    st.markdown("**[행동에 대한 태도 (Attitude)]** 아침 식사는 나를 위한 최고의 투자!\n\n아침을 챙겨 먹는 것은 귀찮은 일이 아니라, **오늘 하루 나의 집중력과 활력을 높이는 긍정적인 행동**입니다. 가벼운 메뉴로 내 몸에 에너지를 선물해 보세요.")
+    st.markdown("**[행동에 대한 태도 (Attitude)]** 아침 식사는 나를 위한 최고의 투자!\n\n아침을 챙겨 먹는 것은 귀찮은 일이 아니라, **오늘 하루 나의 집중력과 활력을 높이는 긍정적인 행동**입니다.")
 elif week_index == 1:
-    st.markdown("**[주관적 규범 (Subjective Norm)]** 요즘 갓생러들의 필수 루틴, 3분 아침식사!\n\n많은 20대들이 아침 굶기를 멈추고 자신만의 간편한 조식 루틴을 만들고 있습니다. **친구들도, 전문가들도 추천하는 아침 식사**, 당신도 멋지게 해내고 있습니다.")
+    st.markdown("**[주관적 규범 (Subjective Norm)]** 요즘 갓생러들의 필수 루틴, 3분 아침식사!\n\n많은 20대들이 아침 굶기를 멈추고 자신만의 간편한 조식 루틴을 만들고 있습니다.")
 elif week_index == 2:
-    st.markdown("**[지각된 행동 통제 (Perceived Behavioral Control)]** 불 없이 3분이면 끝! 내가 완벽히 통제하는 아침\n\n'시간이 없어서'는 더 이상 핑계가 될 수 없죠? **칼도 불도 필요 없는 3분 컷 메뉴들로 당신은 이미 아침 시간을 완벽하게 통제**하고 있습니다.")
+    st.markdown("**[지각된 행동 통제 (Perceived Behavioral Control)]** 불 없이 3분이면 끝! 내가 완벽히 통제하는 아침\n\n'시간이 없어서'는 더 이상 핑계가 될 수 없죠? 칼도 불도 필요 없는 3분 컷 메뉴들로 완벽하게 통제하고 있습니다.")
 else:
     if day_index == 6:
         st.balloons()
-    st.markdown("**[행동 의도와 실천 (Intention & Behavior)]** 나만의 아침 식사 습관, 이제는 완벽한 내 일상으로!\n\n벌써 4주 차입니다. 아침을 먹겠다는 '의도'가 확고한 '행동'으로 변했습니다. **이제 3분 아침식사는 평생을 갈 당신만의 건강한 무기**입니다.")
+    st.markdown("**[행동 의도와 실천 (Intention & Behavior)]** 나만의 아침 식사 습관, 이제는 완벽한 내 일상으로!\n\n벌써 4주 차입니다. 이제 3분 아침식사는 평생을 갈 당신만의 건강한 무기입니다.")
 
 st.divider()
 
 # --- 데일리 체크인 폼 ---
 st.subheader(f"✅ {week[:4]} {day} 인증")
 
-# 🚨 오류 해결 부분: Form의 Key(이름)에 total_day_index를 넣어 날짜마다 고유한 이름을 가지게 만듦
 with st.form(f"daily_checkin_{total_day_index}"):
     date = st.date_input("오늘 날짜", datetime.date.today())
     ate_breakfast = st.radio("오늘 아침(또는 첫 끼)을 챙겨 드셨나요?", ("네, 먹었습니다 😋", "아니요, 굶었습니다 🥲"))
@@ -125,7 +137,7 @@ with st.form(f"daily_checkin_{total_day_index}"):
         
         if total_day_index < 27:
             next_menu = RECOMMENDATIONS[total_day_index + 1]['menu']
-            st.info(f"💡 **미리 보는 내일 메뉴:** 내일은 **[{next_menu}]** 입니다. 미리 식재료를 생각만 해두어도 훨씬 수월해질 거예요!")
+            st.info(f"💡 **미리 보는 내일 메뉴:** 내일은 **[{next_menu}]** 입니다.")
 
 st.divider()
 
@@ -137,66 +149,42 @@ progress_rate = progress_count / 28.0
 st.progress(progress_rate)
 st.markdown(f"총 28일 중 **{progress_count}일** 인증 완료! (진행률: **{int(progress_rate * 100)}%**)")
 
-# --- 7일 차 전용: 주간 회고 설문 ---
+# --- 7일 차 전용: 주간 회고 설문 (구글 시트로 바로 전송!) ---
 if "7일 차" in day:
     st.divider()
-    st.subheader(f"🏆 {week[:4]} 마무리 회고")
-    st.markdown("이번 주 동안의 식사 습관을 되돌아보세요. **나의 행동을 스스로 평가하는 것은 계획된 행동을 지속하는 데 매우 중요**합니다.")
+    st.subheader(f"🏆 {week[:4]} 주간 회고 설문")
+    st.markdown("이번 주 동안의 식사 습관과 생각을 되돌아보며 솔직하게 답변해 주세요.")
     
-    # 🚨 오류 해결 부분: 설문 폼에도 주차(week_index)별로 고유한 이름을 부여함
     with st.form(f"weekly_survey_{week_index}"):
-        attitude = st.slider("이번 주 아침을 먹고 난 후의 기분이나 컨디션은 어땠나요? (1점: 나쁨 ~ 5점: 매우 좋음)", 1, 5, 3)
-        control = st.selectbox(
-            "아침을 챙겨 먹는 데 가장 나의 통제를 벗어난(방해가 된) 요인은?", 
-            ("없음 (스스로 잘 통제함)", "아침잠/시간 부족", "식재료 및 식비 부담", "조리하기 귀찮음", "입맛이 없음", "기타")
-        )
-        benefit = st.text_area("다음 주에도 아침을 먹기 위해 나 스스로에게 해주고 싶은 다짐은?")
+        col1, col2 = st.columns(2)
+        with col1:
+            user_name = st.text_input("본인의 이름 (또는 닉네임)을 입력하세요")
+        with col2:
+            user_age = st.number_input("나이를 입력하세요", min_value=10, max_value=100, value=20)
+            
+        st.markdown("---")
+        st.markdown("**💡 각 문항에 대해 자신이 생각하는 정도를 선택해 주세요.**\n*(1점: 전혀 그렇지 않다 ~ 5점: 매우 그렇다)*")
         
-        survey_btn = st.form_submit_button("회고 제출하고 이번 주 마무리하기")
+        # TPB 기반 8개 설문 문항
+        q1 = st.slider("1. [태도] 아침 식사를 규칙적으로 하는 것은 나의 건강과 일상생활에 도움이 된다고 생각한다.", 1, 5, 3)
+        q2 = st.slider("2. [주관적 규범] 가족이나 친구 등 나에게 중요한 사람들은 내가 아침 식사를 규칙적으로 하기를 바란다고 생각한다.", 1, 5, 3)
+        q3 = st.slider("3. [주관적 규범] 내 주변 사람들은 아침 식사를 챙겨 먹는 행동을 긍정적으로 평가한다고 생각한다.", 1, 5, 3)
+        q4 = st.slider("4. [인지된 행동 통제력] 바쁜 아침에도 5분 이내의 간편식을 활용하면 아침 식사를 챙겨 먹을 수 있다는 자신감이 있다.", 1, 5, 3)
+        q5 = st.slider("5. [인지된 행동 통제력] 시간이나 비용이 부족하더라도 아침 식사를 규칙적으로 실천할 수 있다고 생각한다.", 1, 5, 3)
+        q6 = st.slider("6. [행동 의도] 앞으로 2주 동안 최소 3회 이상 아침 식사를 챙겨 먹을 의향이 있다.", 1, 5, 3)
+        q7 = st.slider("7. [행동 의도] 앞으로 아침 식사를 지속적인 생활 습관으로 유지하기 위해 노력할 것이다.", 1, 5, 3)
+        
+        st.markdown("---")
+        q8 = st.number_input("8. [실제 행동] 최근 30일 동안 아침 식사를 한 날은 며칠입니까? (0일 ~ 30일)", min_value=0, max_value=30, value=0)
+        
+        survey_btn = st.form_submit_button("설문 제출하고 이번 주 마무리하기")
         
         if survey_btn:
-            new_survey_data = {
-                "제출일자": str(datetime.date.today()),
-                "진행주차": week[:4],
-                "컨디션_점수(1~5)": attitude,
-                "방해요인": control,
-                "나의_다짐": benefit
-            }
-            st.session_state.survey_results.append(new_survey_data)
-            
-            st.success("소중한 회고가 등록되었습니다. 데이터가 안전하게 저장되었습니다! 👏👏👏")
-            st.balloons()
-
-# -----------------------------------------------------------------------------
-# [추가됨] 관리자(본인) 전용: 설문 데이터 통계 확인, 엑셀 다운로드 및 초기화
-# -----------------------------------------------------------------------------
-st.divider()
-with st.expander("📁 관리자 전용: 설문 통계 데이터 모아보기 및 엑셀 다운로드"):
-    if len(st.session_state.survey_results) > 0:
-        # 세션에 저장된 설문 데이터를 판다스 데이터프레임(표 형식)으로 변환
-        df = pd.DataFrame(st.session_state.survey_results)
-        
-        # 화면에 표(테이블) 형태로 미리 보여주기
-        st.dataframe(df)
-        
-        # 한글 깨짐 방지를 위해 인코딩을 'utf-8-sig'로 설정하여 CSV로 변환
-        csv = df.to_csv(index=False).encode('utf-8-sig')
-        
-        # 버튼을 나란히 배치하기 위해 컬럼 나누기
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.download_button(
-                label="📊 설문 결과 엑셀(CSV) 파일로 다운로드",
-                data=csv,
-                file_name=f"breakfast_survey_results_{datetime.date.today()}.csv",
-                mime="text/csv"
-            )
-            
-        with col2:
-            # 초기화 버튼 생성
-            if st.button("🚨 설문 데이터 싹 지우기 (초기화)"):
-                st.session_state.survey_results = [] # 저장된 데이터를 빈칸으로 만듦
-                st.rerun() # 화면을 새로고침해서 표를 즉시 사라지게 함
-    else:
-        st.info("아직 제출된 설문 데이터가 없습니다. 7일 차 설문을 진행해 보세요!")
+            if user_name.strip() == "":
+                st.error("이름을 입력해 주세요!")
+            else:
+                try:
+                    # 1. 구글 시트 연결 가져오기
+                    client = init_connection()
+                    # 2. 지정한 엑셀 파일 열기 (첫 번째 시트)
+                    sheet = client.open_by_url(GOOGLE_
