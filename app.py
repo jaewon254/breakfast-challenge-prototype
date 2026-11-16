@@ -67,45 +67,94 @@ def load_user_checkins(user_name):
         return []
 
 # -----------------------------------------------------------------------------
-# 1. 28일(4주) 추천 메뉴 리스트 (맞춤 필터링 태그 포함)
+# 1. PDF 기반 9가지 핵심 레시피 및 28일(4주) 사이클 생성
 # -----------------------------------------------------------------------------
-RECOMMENDATIONS = [
-    # 1주 차
-    {"menu": "바나나 1개 + 무가당 두유", "time": "1분", "point": "불이 필요 없고 든든한 식물성 단백질 충전!", "no_cook": True, "dairy_free": True},
-    {"menu": "사과 반 쪽 + 삶은 계란 1개", "time": "1분 (미리 준비)", "point": "아침 사과는 금! 식이섬유와 질 좋은 단백질의 조화.", "no_cook": True, "dairy_free": True},
-    {"menu": "그릭 요거트 + 한줌 견과류", "time": "1분", "point": "유산균과 건강한 지방으로 장 건강과 뇌 활력을 동시에!", "no_cook": True, "dairy_free": False},
-    {"menu": "통밀빵 1쪽 + 슬라이스 치즈", "time": "2분", "point": "복합 탄수화물로 아침 혈당을 완만하게 올려줍니다.", "no_cook": True, "dairy_free": False},
-    {"menu": "편의점 감동란 2개 + 아몬드 브리즈", "time": "1분", "point": "바쁜 아침, 출근/등교길 편의점에서 바로 픽업하는 꿀조합!", "no_cook": True, "dairy_free": True},
-    {"menu": "시리얼 한 컵 + 우유", "time": "1분", "point": "가장 클래식한 아침! 당분이 적은 시리얼을 추천해요.", "no_cook": True, "dairy_free": False},
-    {"menu": "오버나이트 오트밀", "time": "0분 (전날 준비)", "point": "전날 우유에 불려둔 오트밀을 꺼내 먹기만 하면 끝!", "no_cook": True, "dairy_free": False},
-    
-    # 2주 차
-    {"menu": "전자레인지 머그컵 계란찜", "time": "3분", "point": "계란 2개와 물 약간, 전자레인지 3분이면 따뜻한 단백질 완성!", "no_cook": False, "dairy_free": True},
-    {"menu": "편의점 참치마요 삼각김밥 + 따뜻한 차", "time": "1분", "point": "한국인은 밥심! 든든하게 탄수화물을 채워요.", "no_cook": True, "dairy_free": True},
-    {"menu": "단백질 쉐이크 + 바나나 반 개", "time": "2분", "point": "마시는 단백질로 빠르고 간편하게 포만감을 줍니다.", "no_cook": True, "dairy_free": False},
-    {"menu": "인스턴트 컵수프 + 모닝빵 1개", "time": "3분", "point": "따뜻한 물만 부으면 완성! 속을 편안하게 데워줍니다.", "no_cook": False, "dairy_free": False},
-    {"menu": "그래놀라 + 플레인 요거트", "time": "1분", "point": "바삭한 식감으로 잠든 뇌를 깨워주는 아침 식사.", "no_cook": True, "dairy_free": False},
-    {"menu": "고구마 1개 + 우유", "time": "1분 (미리 준비)", "point": "식이섬유가 풍부해 점심때까지 배고프지 않아요.", "no_cook": True, "dairy_free": False},
-    {"menu": "닭가슴살 소시지 + 방울토마토 5알", "time": "3분", "point": "전자레인지 조리로 끝내는 고단백 아침식사.", "no_cook": False, "dairy_free": True},
-
-    # 3주 차
-    {"menu": "식빵 토스트 + 딸기잼 얇게", "time": "3분", "point": "토스터기만 있으면 끝! 커피와 가장 잘 어울려요.", "no_cook": False, "dairy_free": True},
-    {"menu": "연두부 1팩 + 오리엔탈 드레싱", "time": "1분", "point": "소화가 안 되는 아침에 가장 부드럽게 넘어가는 메뉴.", "no_cook": True, "dairy_free": True},
-    {"menu": "편의점 단백질 바 + 아메리카노", "time": "1분", "point": "정말 시간이 없을 때 주머니에 넣고 나갈 수 있는 비상식량!", "no_cook": True, "dairy_free": True},
-    {"menu": "참치마요 카나페 (크래커 + 참치 약간)", "time": "3분", "point": "작지만 강력한 열량! 색다른 아침을 원할 때 좋아요.", "no_cook": True, "dairy_free": True},
-    {"menu": "냉동 블루베리 + 요거트 + 꿀 약간", "time": "2분", "point": "눈 건강에 좋은 안토시아닌과 상큼함으로 아침을 시작해요.", "no_cook": True, "dairy_free": False},
-    {"menu": "미숫가루(우유에 타서) + 견과류", "time": "2분", "point": "고소한 전통식 아침! 포만감이 아주 뛰어납니다.", "no_cook": True, "dairy_free": False},
-    {"menu": "크래미(맛살) 2개 + 스트링 치즈 1개", "time": "1분", "point": "포장만 벗기면 끝! 짭조름한 단백질 간편식.", "no_cook": True, "dairy_free": False},
-
-    # 4주 차
-    {"menu": "인절미(떡) 3조각 + 두유", "time": "1분", "point": "냉동실 떡을 전자레인지에 살짝 돌려 쫄깃하게 즐겨요.", "no_cook": False, "dairy_free": True},
-    {"menu": "오트밀 컵죽", "time": "3분", "point": "시판 오트밀 죽에 뜨거운 물만 부으면 든든한 한 끼 완성.", "no_cook": False, "dairy_free": True},
-    {"menu": "냉동 볶음밥 반 공기", "time": "3분", "point": "남은 볶음밥을 소분해 두었다가 아침에 데워 먹기만 하세요.", "no_cook": False, "dairy_free": True},
-    {"menu": "구운 계란 2개 + 사과즙 1팩", "time": "1분", "point": "유통기한이 긴 구운 계란은 1인 가구의 든든한 동반자입니다.", "no_cook": True, "dairy_free": True},
-    {"menu": "냉동 만두 3개 (전자레인지 조리)", "time": "3분", "point": "전자레인지용 찜기를 활용하면 촉촉하게 수분을 채운 아침 완성!", "no_cook": False, "dairy_free": True},
-    {"menu": "토마토 1개 + 올리브오일 살짝", "time": "2분", "point": "신선하고 가볍게! 비타민 흡수율을 높인 지중해식 아침.", "no_cook": True, "dairy_free": True},
-    {"menu": "나만의 3분 컷 최애 조합!", "time": "자유", "point": "지난 4주간 가장 맘에 들었던 메뉴를 스스로 차려보세요!", "no_cook": True, "dairy_free": True},
+BASE_RECIPES = [
+    {
+        "menu": "1. 오트밀 바나나 요거트볼",
+        "time": "2분 (화기 불필요)",
+        "point": "불이나 전자레인지 없이 재료만 섞으면 끝! 식이섬유와 유산균이 풍부한 초간편 볼.",
+        "ingredients": "오트밀 1/2컵, 플레인 요거트 1컵, 바나나 1개, 견과류 한 줌, 꿀 약간",
+        "steps": "1) 오트밀과 요거트를 그릇에 섞어준다.\n2) 슬라이스한 바나나를 올리고 견과류를 뿌린 후, 마지막으로 꿀을 약간 둘러준다.",
+        "no_cook": True,
+        "dairy_free": False
+    },
+    {
+        "menu": "2. 오트밀 죽",
+        "time": "2분 30초 (전자레인지)",
+        "point": "따뜻하고 속이 편안한 한 끼! 우유 대신 물을 사용하면 유당불내증도 안심할 수 있어요.",
+        "ingredients": "오트밀 1/2컵, 우유 or 물 150mL, 계란 1개, 소금 약간",
+        "steps": "1) 그릇에 오트밀과 우유(또는 물)를 넣고 잘 저어준다.\n2) 계란을 깨서 넣은 뒤 노른자를 터뜨려준다.\n3) 전자레인지에 2분 먼저 돌리고 잘 섞은 뒤 30초 추가로 돌린다.",
+        "no_cook": False,
+        "dairy_free": True
+    },
+    {
+        "menu": "3. 오버나이트 오트밀(숙성)",
+        "time": "0분 (전날 밤 준비)",
+        "point": "전날 밤 냉장고에 넣어두면 아침에 꺼내 과일만 올려 바로 먹는 0분 컷 메뉴!",
+        "ingredients": "오트밀 1/2컵, 우유 100mL, 계란 1개(선택), 치아씨드 1스푼, 꿀 및 과일 토핑",
+        "steps": "1) 오트밀, 우유, 치아씨드, 꿀을 섞어 밀폐용기에 담는다.\n2) 냉장고에 6시간 이상 보관한 후, 먹기 직전에 좋아하는 과일을 올려준다.",
+        "no_cook": True,
+        "dairy_free": False
+    },
+    {
+        "menu": "4. 즉석밥 카레",
+        "time": "3분 (전자레인지)",
+        "point": "전자레인지 하나로 완성하는 든든한 한 끼! 닭가슴살이나 소세지를 얹어 단백질까지 챙기세요.",
+        "ingredients": "즉석밥 1개, 고형카레 1/2개, 물 5스푼 (+ 닭가슴살 또는 소세지)",
+        "steps": "1) 즉석밥을 전자레인지에 데워준다.\n2) 고형카레 1/2개를 즉석밥에 올려주고 물 5스푼을 넣어준다.\n3) 전자레인지에 2분 먼저 돌리고 잘 섞은 뒤 30초~1분 추가로 돌린다.\n4) 냉장고에 있는 닭가슴살 또는 소세지를 데워 올려 맛있게 먹는다.",
+        "no_cook": False,
+        "dairy_free": True
+    },
+    {
+        "menu": "5. 캔참치밥",
+        "time": "2분 (초간편 양념)",
+        "point": "자취방 필수템 캔참치에 양념만 슥슥 비비면 완성되는 고단백 밥도둑!",
+        "ingredients": "밥(적당량), 캔참치(1캔), 간장(1스푼), 맛소금(조금), 후추(조금), 다진 마늘(1스푼), 청양고추(약간), 참기름(1스푼), 통깨(약간)",
+        "steps": "1) 캔참치를 개봉한 뒤 간장 1스푼을 넣습니다.\n2) 맛소금과 후추를 조금씩 넣습니다.\n3) 다진 마늘 1스푼과 잘게 썬 청양고추를 넣습니다.\n4) 참기름 1스푼을 넣고 통깨를 뿌립니다.\n5) 완성한 양념 참치를 준비한 밥과 함께 먹습니다.",
+        "no_cook": True,
+        "dairy_free": True
+    },
+    {
+        "menu": "6. 계란볶음밥",
+        "time": "5분 (팬 조리)",
+        "point": "밥알을 계란으로 먼저 코팅해 고슬고슬하고 고소한 중식당 스타일 아침 볶음밥!",
+        "ingredients": "햇반(1개), 계란(2개), 대파(20g), 식용유(2큰술/30mL), 굴소스(1/2큰술/7.5mL), 소금(두 꼬집)",
+        "steps": "1) 햇반에 계란 1개를 넣고 섞어 밥알을 코팅합니다.\n2) 나머지 계란 1개를 풀어 달군 팬에 식용유를 두르고 스크램블에그를 만듭니다.\n3) 계란으로 코팅한 밥을 넣고 2분간 볶습니다.\n4) 굴소스 1/2큰술과 소금 두 꼬집을 넣고 1분간 더 볶습니다.\n5) 마지막으로 썬 대파 20g을 넣고 30초간 더 볶습니다.",
+        "no_cook": False,
+        "dairy_free": True
+    },
+    {
+        "menu": "7. 콩나물밥 (기본 양념장)",
+        "time": "7분 (냄비 조리)",
+        "point": "아삭한 콩나물과 감칠맛 나는 간장 양념장의 조화! 속이 편안한 한식 아침 식사.",
+        "ingredients": "콩나물(200g), 찬밥(2공기), 물(50mL), 계란프라이(선택) / 양념장: 진간장(2스푼), 국간장(1스푼), 고춧가루(1스푼), 갈은 깨(1스푼), 다진 마늘(1스푼)",
+        "steps": "1) 깨끗이 씻은 콩나물 200g을 냄비에 넣습니다.\n2) 물 50mL를 넣고 찬밥 2공기를 올린 뒤 뚜껑을 덮어 김이 날 때까지 익힙니다.\n3) 김이 나면 2분 정도 더 익혀 불을 끕니다.\n4) 뚜껑을 닫은 채 1분간 뜸을 들인 후 뚜껑을 열어 밥과 콩나물을 잘 섞습니다.\n5) 기본 양념장 재료를 섞고, 원하면 계란프라이를 올린 뒤 양념장과 함께 비벼 먹습니다.",
+        "no_cook": False,
+        "dairy_free": True
+    },
+    {
+        "menu": "8. 콩나물밥 (부추짜박이 양념장)",
+        "time": "8분 (냄비 조리)",
+        "point": "향긋한 부추와 양파가 듬뿍 들어간 특제 부추짜박이 양념장으로 비벼 먹는 별미!",
+        "ingredients": "콩나물(200g), 찬밥(2공기), 물(50mL) / 부추짜박이: 부추(100g), 양파(1/2개), 청양고추(2개), 다진 마늘(1스푼), 진간장(3스푼), 국간장(1스푼), 액젓(1스푼), 매실액기스(1스푼), 갈은 깨(1스푼), 고춧가루(2스푼)",
+        "steps": "1) 냄비에 콩나물 200g과 물 50mL, 찬밥을 올려 김이 날 때까지 익힌 후 2분 더 익히고 1분간 뜸을 들입니다.\n2) 부추 100g(1cm 길이), 양파 1/2개, 청양고추 2개를 잘게 다져 볼에 담습니다.\n3) 볼에 다진 마늘, 진간장, 국간장, 액젓, 매실액기스, 갈은 깨, 고춧가루를 넣고 골고루 섞어 부추짜박이를 만듭니다.\n4) 콩나물밥 위에 부추짜박이를 올리고 취향에 따라 계란프라이, 구운 김, 참기름을 곁들여 비벼 먹습니다.",
+        "no_cook": False,
+        "dairy_free": True
+    },
+    {
+        "menu": "9. 계란죽",
+        "time": "5분 (냄비 조리)",
+        "point": "아침에 입맛이 없거나 위장이 예민할 때 부드럽게 술술 넘어가는 따뜻한 영양죽!",
+        "ingredients": "계란(2개), 밥(1공기), 물(300mL), 치킨스톡(반 스푼) 또는 소금(반 스푼), 참기름(마무리용)",
+        "steps": "1) 물 300mL에 밥 1공기를 넣고 잘 풀어줍니다.\n2) 한 번 잘 끓이면서 밥알을 풀어줍니다.\n3) 계란 2개를 깨 넣고 숟가락으로 잘 풀어줍니다.\n4) 치킨스톡 반 스푼으로 간합니다. (치킨스톡이 없으면 소금 반 스푼 사용)\n5) 그릇에 담고 참기름을 둘러 완성합니다.",
+        "no_cook": False,
+        "dairy_free": True
+    }
 ]
+
+# 9가지 메뉴를 28일(4주) 전체 일정에 순환 배정
+RECOMMENDATIONS = [BASE_RECIPES[i % len(BASE_RECIPES)] for i in range(28)]
 
 # -----------------------------------------------------------------------------
 # 2. 사이드바: 참여자 정보 및 일정 관리
@@ -138,7 +187,7 @@ selected_day_num = total_day_index + 1  # 1 ~ 28
 # -----------------------------------------------------------------------------
 # 3. 메인 화면 및 3단계 탭 구성
 # -----------------------------------------------------------------------------
-st.title("🍱 나 혼자 잘 먹는다: 3분 챌린지")
+st.title("🍱 나 혼자 잘 먹는다: 간편 아침 챌린지")
 st.markdown("20대 1인 가구를 위한 계획된 행동이론(TPB) 기반 4주 아침식사 습관 프로젝트")
 
 if not user_name.strip():
@@ -146,7 +195,7 @@ if not user_name.strip():
 
 tab_pre, tab_daily, tab_post = st.tabs([
     "📋 1. 사전 설문 (시작 전)",
-    "🍱 2. 데일리 3분 챌린지 (1~28일)",
+    "🍱 2. 데일리 아침 챌린지 (1~28일)",
     "🏆 3. 사후 설문 (4주 완료 후)"
 ])
 
@@ -186,12 +235,12 @@ with tab_pre:
                         now_str, "사전설문(Pre)", user_name.strip(), pre_age,
                         q1, q2, q3, q4, q5, q6, q7, q8
                     ])
-                    st.success("✅ 사전 설문이 구글 스프레드시트에 안전하게 저장되었습니다! 이제 '2. 데일리 3분 챌린지' 탭으로 이동해 주세요.")
+                    st.success("✅ 사전 설문이 구글 스프레드시트에 안전하게 저장되었습니다! 이제 '2. 데일리 아침 챌린지' 탭으로 이동해 주세요.")
                 except Exception as e:
                     st.error(f"저장 중 오류가 발생했습니다: {e}")
 
 # =============================================================================
-# [탭 2] 데일리 3분 챌린지 (맞춤 필터 + 날짜 잠금 + 구글 시트 영구 저장)
+# [탭 2] 데일리 아침 챌린지 (PDF 레시피 사이클 + 상세 조리법 + 날짜 잠금)
 # =============================================================================
 with tab_daily:
     # 1) 맞춤형 메뉴 필터링 옵션
@@ -204,22 +253,25 @@ with tab_daily:
         
     todays_pick = RECOMMENDATIONS[total_day_index]
     
-    # 필터 조건에 맞지 않을 경우 대체 메뉴 자동 추천
+    # 필터 조건에 맞지 않을 경우 조건에 맞는 레시피 사이클 내에서 대체 추천
     is_dairy_ok = (not filter_dairy) or todays_pick["dairy_free"]
     is_nocook_ok = (not filter_nocook) or todays_pick["no_cook"]
     
-    st.subheader(f"💡 {week[:4]} {day} (전체 {selected_day_num}일 차) 추천 메뉴")
-    if is_dairy_ok and is_nocook_ok:
-        st.info(f"**{todays_pick['menu']}** (소요 시간: {todays_pick['time']})\n\n👉 **추천 이유:** {todays_pick['point']}")
-    else:
+    st.subheader(f"💡 {week[:4]} {day} (전체 {selected_day_num}일 차) 추천 레시피")
+    if not (is_dairy_ok and is_nocook_ok):
         filtered_pool = [
-            item for item in RECOMMENDATIONS
+            item for item in BASE_RECIPES
             if ((not filter_dairy) or item["dairy_free"]) and ((not filter_nocook) or item["no_cook"])
         ]
-        alt_pick = filtered_pool[total_day_index % len(filtered_pool)]
-        st.warning(f"기존 메뉴({todays_pick['menu']})는 선택한 필터 조건과 맞지 않아 맞춤 대체 메뉴를 추천합니다!")
-        st.info(f"**[맞춤 대체] {alt_pick['menu']}** (소요 시간: {alt_pick['time']})\n\n👉 **추천 이유:** {alt_pick['point']}")
-        todays_pick = alt_pick
+        if filtered_pool:
+            todays_pick = filtered_pool[total_day_index % len(filtered_pool)]
+            st.warning("선택하신 필터 조건에 맞춰 레시피 사이클 내 대체 메뉴를 배정했습니다!")
+
+    st.info(f"**{todays_pick['menu']}** (소요 시간: {todays_pick['time']})\n\n👉 **추천 포인트:** {todays_pick['point']}")
+    
+    with st.expander("📖 준비 재료 및 상세 조리 순서 보기", expanded=True):
+        st.markdown(f"**🛒 준비 재료:**\n{todays_pick['ingredients']}")
+        st.markdown(f"**👩‍🍳 조리 방법:**\n{todays_pick['steps']}")
 
     st.divider()
 
@@ -228,11 +280,11 @@ with tab_daily:
     if week_index == 0:
         st.markdown("**[행동에 대한 태도 (Attitude)]** 아침 식사는 나를 위한 최고의 투자!\n\n아침을 챙겨 먹는 것은 귀찮은 일이 아니라, **오늘 하루 나의 집중력과 활력을 높이는 긍정적인 행동**입니다.")
     elif week_index == 1:
-        st.markdown("**[주관적 규범 (Subjective Norm)]** 요즘 갓생러들의 필수 루틴, 3분 아침식사!\n\n많은 20대들이 아침 굶기를 멈추고 자신만의 간편한 조식 루틴을 만들고 있습니다.")
+        st.markdown("**[주관적 규범 (Subjective Norm)]** 요즘 갓생러들의 필수 루틴, 간편 아침식사!\n\n많은 20대들이 아침 굶기를 멈추고 자신만의 간편한 조식 루틴을 만들고 있습니다.")
     elif week_index == 2:
-        st.markdown("**[지각된 행동 통제 (Perceived Behavioral Control)]** 불 없이 3분이면 끝! 내가 완벽히 통제하는 아침\n\n'시간이 없어서'는 더 이상 핑계가 될 수 없죠? 칼도 불도 필요 없는 3분 컷 메뉴들로 완벽하게 통제하고 있습니다.")
+        st.markdown("**[지각된 행동 통제 (Perceived Behavioral Control)]** 전자레인지와 간단한 재료면 끝! 내가 통제하는 아침\n\n'시간이 없어서'는 더 이상 핑계가 될 수 없죠? 간단한 자취 레시피들로 완벽하게 통제하고 있습니다.")
     else:
-        st.markdown("**[행동 의도와 실천 (Intention & Behavior)]** 나만의 아침 식사 습관, 이제는 완벽한 내 일상으로!\n\n벌써 4주 차입니다. 이제 3분 아침식사는 평생을 갈 당신만의 건강한 무기입니다.")
+        st.markdown("**[행동 의도와 실천 (Intention & Behavior)]** 나만의 아침 식사 습관, 이제는 완벽한 내 일상으로!\n\n벌써 4주 차입니다. 9가지 핵심 레시피를 자유자재로 활용하며 건강한 아침 루틴을 완성해 보세요.")
 
     st.divider()
 
@@ -247,7 +299,7 @@ with tab_daily:
         ate_breakfast = st.radio("오늘 아침(또는 첫 끼)을 챙겨 드셨나요?", ("네, 먹었습니다 😋", "아니요, 굶었습니다 🥲"), disabled=is_locked)
         meal_type = st.selectbox(
             "어떤 형태로 드셨나요?",
-            ("선택 안 함 (굶음)", f"추천 메뉴: {todays_pick['menu']}", "편의점 간편식", "전자레인지 간편 조리", "어제 남은 음식", "배달 음식", "기타 (직접 요리 등)"),
+            ("선택 안 함 (굶음)", f"추천 레시피: {todays_pick['menu']}", "다른 추천 레시피 활용", "편의점 간편식", "어제 남은 음식", "기타 (직접 요리 등)"),
             disabled=is_locked
         )
         submit_btn = st.form_submit_button("오늘 하루 인증하고 구글 시트에 기록하기", disabled=is_locked)
@@ -280,7 +332,7 @@ with tab_daily:
 
     st.divider()
 
-    # 4) 구글 시트 연동 실시간 달성률 시각화 (새로고침해도 유지됨)
+    # 4) 구글 시트 연동 실시간 달성률 시각화
     st.subheader("📊 나의 4주 누적 달성률 (실시간 DB 연동)")
     completed_days = load_user_checkins(user_name)
     progress_count = len(completed_days)
